@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:sns="http://www.mulesoft.org/schema/mule/sns" xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+	xmlns:dynamodb="http://www.mulesoft.org/schema/mule/dynamodb"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:sqs="http://www.mulesoft.org/schema/mule/sqs" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/sqs http://www.mulesoft.org/schema/mule/sqs/current/mule-sqs.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/dynamodb http://www.mulesoft.org/schema/mule/dynamodb/current/mule-dynamodb.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/sns http://www.mulesoft.org/schema/mule/sns/current/mule-sns.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="2a495234-e394-4a5f-9eef-925fcd1ae540" >
+		<http:listener-connection host="0.0.0.0" port="8080" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="014c7d92-0e51-4244-8fe1-fff7328a6f75" >
+		<http:request-connection host="127.0.0.1" port="8080" />
+	</http:request-config>
+	
+	
+<!-- 
+	================================
+	1. Create Process API 
+	Sample Data Input
+	{
+		"Item": {
+			"OrderId": "213",
+			"Airline": "SWW",
+			"Status": "New"
+		}
+	} 
+	
+	================================
+-->
+	
+	<flow name="create-process-api" doc:id="db269c6d-9f34-44a7-829c-181abb27f41b" >
+		<http:listener doc:name="Listener" doc:id="86909313-dff0-4ff4-a875-dda7e83d6326" config-ref="HTTP_Listener_config" path="/create" >
+			<http:response >
+				<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Access-Control-Allow-Origin" : "*",
+	"Access-Control-Allow-Headers" : "Content-Type"
+}]]]></http:headers>
+			</http:response>
+		</http:listener>
+		<ee:transform doc:name="Transform Message" doc:id="a460bdbc-cd6d-4cdb-b6c9-ea604f203765">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var jsonString = write(payload, "application/json")
+---
+{
+	body: jsonString,
+} as Object {
+	class: "org.mule.extension.sqs.api.model.Message"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger message="CreateFlow: #[payload]" level="INFO" doc:name="Logger"/>
+		<sqs:send-message doc:name="Send message" doc:id="968ce3ac-1003-47fb-9f77-8b2d953dd1cd" config-ref="Amazon_SQS_Configuration"/>
+	</flow>
+
+	
+<!-- 
+	================================
+ 	2. Retrieve Process API 
+ 	
+	Sample Data Input
+	http://localhost:8080/retrieve?orderID=213
+	================================
+-->
+	
+	<flow name="retrieve-processs-api" doc:id="bb5d11da-2197-4fde-a074-7d91c177ff1c" >
+		<http:listener doc:name="Listener" doc:id="4455803b-e635-4b58-984d-6877e19eb016" config-ref="HTTP_Listener_config" path="/retrieve"/>
+		<logger level="INFO" doc:name="Logger" doc:id="b7a332bc-1b81-4605-a9d0-25a31fe1281d" message="RetrieveFlow #[attributes.queryParams.orderID]" />
+		<http:request method="GET" doc:name="Request" doc:id="b5f68e20-af6d-48ce-93d3-ab376b95e290" config-ref="HTTP_Request_configuration" path="/retrieve-system">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"orderID" : attributes.queryParams.orderID
+}]]]></http:query-params>
+		</http:request>
+	</flow>
+
+
+<!-- 
+	================================
+		3. Create System API 
+	 ================================
+-->
+	
+	<flow name="create-system-api" doc:id="615a2197-f163-4d5b-a4d7-41ca50fda999" >
+		<sqs:receivemessages doc:name="Receivemessages" doc:id="33d383c4-b023-4dca-a13b-c2538a2ce69f" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/323030152251/flight-book"/>
+		<ee:transform doc:name="Transform Message" doc:id="94b67885-e62f-4d72-a6d9-4ba57260254a" >
+			<ee:message >
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var jsonObj = read((payload),"application/json")
+---
+{
+	"OrderId": {"S": jsonObj.Item.OrderId },
+    "Airline": {"S": jsonObj.Item.Airline },
+    "Status": {"S": "Processed" }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger message="ProcessFlow: #[payload]" level="INFO" doc:name="Logger"/>
+		<set-variable value="#[payload.Airline.S]" doc:name="Set Variable" doc:id="04c83764-6f1e-40c0-82a1-2dc1d683281b" variableName="airline"/>
+		<set-variable value="#[payload.OrderId.S]" doc:name="Set Variable" doc:id="6cc3bb44-744b-452d-a25d-5b910ba85bdd" variableName="orderID"/>
+		<dynamodb:put-item doc:name="Put item" doc:id="78947fd8-b39d-46a5-a4ed-9eeaa0f324e5" config-ref="Amazon_DynamoDB_Configuration" tableName="flight_table"/>	
+			<choice doc:name="Choice" doc:id="8f3d005c-049d-4494-9da8-128efdc7bf8a" >
+				<when expression='#[vars.airline == "SIA"]'>
+					<s3:create-object doc:name="Create object" doc:id="f4470fbe-92b9-4a2a-8e09-5c3a0922995c" config-ref="Amazon_S3_Configuration" bucketName="flight-tickets" key="#[vars.orderID]" />
+					<logger message="S3 called!" level="INFO" doc:name="Logger"/>
+				</when>
+			<otherwise>
+				<sns:publish doc:name="Publish" doc:id="38ad4683-07e2-4e5b-809a-3005942b2364" config-ref="Amazon_SNS_configuration" topicArn="arn:aws:sns:us-east-1:323030152251:NotifyMe" subject="Test from Flight ID" messageStructure="String" >
+					<sns:message ><![CDATA[#["Alert Sent!"]]]></sns:message>
+				</sns:publish>
+			</otherwise>
+		</choice>
+	</flow>
+
+
+<!-- 	
+		================================
+		4. Retrieve System API 
+		================================
+-->	
+
+	<flow name="retrieve-system-api" doc:id="297ed899-1a1d-4b3b-9d54-73c598582217" >
+		<http:listener doc:name="Listener" doc:id="e208906b-b2d2-4bf2-a59c-193c5626aac8" config-ref="HTTP_Listener_config" path="/retrieve-system">
+			<http:response>	
+				<http:headers><![CDATA[#[output application/java
+				---
+				{
+					"Access-Control-Allow-Origin" : "*",
+					"Access-Control-Allow-Headers" : "Content-Type"
+				}]]]></http:headers>
+			</http:response>		
+		</http:listener>
+		<logger message="RetrieveFlow: #[attributes.queryParams.orderID]" level="INFO" doc:name="Logger"/>
+		<ee:transform doc:name="Transform Message" doc:id="b6234665-7b2c-48d7-bfb8-154f7e3e1f62" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"OrderId": {"S": attributes.queryParams.orderID }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<dynamodb:get-item doc:name="Get item" doc:id="1a79a567-f415-401a-97b6-c3dc25110fe5" config-ref="Amazon_DynamoDB_Configuration" tableName="flight_table"/>
+		<ee:transform doc:name="Transform Message" doc:id="9d2e26fb-4735-4812-b680-061487f34cbd" >
+			<ee:message >
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"OrderId": payload.item.OrderId.S,
+    "Airline": payload.item.Airline.S,
+    "Status": payload.item.Status.S
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="1757ef72-705c-4258-a819-e0d1c52eee20" />
+	</flow>
+</mule>

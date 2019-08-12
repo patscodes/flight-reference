@@ -1,0 +1,24 @@
+body {
+  margin: 0;
+  background-color: rgb(53, 53, 53);
+}
+
+#roboto {
+  font-family: font1;
+  color: #ffffff;
+  padding: 5px;
+}
+
+#roboto-link {
+  font-family: font1;
+  color: #ffffff;
+  padding: 5px;
+}
+
+
+@font-face {
+  font-family: font1;
+  src: url('Roboto-Regular.ttf');
+  font-weight:400;
+  font-weight:normal;
+}

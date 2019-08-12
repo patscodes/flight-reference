@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<domain:mule-domain
+xmlns:cors="http://www.mulesoft.org/schema/mule/cors"
+	        xmlns:sns="http://www.mulesoft.org/schema/mule/sns"
+        xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+        xmlns:dynamodb="http://www.mulesoft.org/schema/mule/dynamodb"
+        xmlns:sqs="http://www.mulesoft.org/schema/mule/sqs"
+        xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:domain="http://www.mulesoft.org/schema/mule/ee/domain" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/cors http://www.mulesoft.org/schema/mule/cors/current/mule-cors.xsd 
+               http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+               http://www.mulesoft.org/schema/mule/ee/domain http://www.mulesoft.org/schema/mule/ee/domain/current/mule-domain-ee.xsd
+http://www.mulesoft.org/schema/mule/sqs http://www.mulesoft.org/schema/mule/sqs/current/mule-sqs.xsd
+http://www.mulesoft.org/schema/mule/dynamodb http://www.mulesoft.org/schema/mule/dynamodb/current/mule-dynamodb.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/sns http://www.mulesoft.org/schema/mule/sns/current/mule-sns.xsd">
+	<sqs:config name="Amazon_SQS_Configuration" doc:name="Amazon SQS Configuration" doc:id="c973f583-7c0a-4dc8-80e3-43fdddad5fe7" defaultQueueUrl="https://sqs.us-east-1.amazonaws.com/323030152251/flight-book">
+		<sqs:basic-connection testQueueArn="arn:aws:sqs:us-east-1:323030152251:flight-book" accessKey="${aws.accessKey}" secretKey="${aws.secretKey}"/>
+	</sqs:config>
+	<dynamodb:config name="Amazon_DynamoDB_Configuration" doc:name="Amazon DynamoDB Configuration" doc:id="e6995822-025d-4b03-99fb-eefbe06585d8" >
+		<dynamodb:basic-connection accessKey="${aws.accessKey}" secretKey="${aws.secretKey}"  />
+	</dynamodb:config>
+	<s3:config name="Amazon_S3_Configuration" doc:name="Amazon S3 Configuration" doc:id="00b129ed-0299-4acb-92ff-6239fdc5c507" >
+		<s3:basic-connection accessKey="${aws.accessKey}" secretKey="${aws.secretKey}" />
+	</s3:config>
+	<sns:config name="Amazon_SNS_configuration" doc:name="Amazon SNS configuration" doc:id="3348172a-6e07-44ba-bba4-3e0b5a11c723" defaultTopicArn="arn:aws:sns:us-east-1:323030152251:NotifyMe">
+		<sns:basic-connection accessKey="${aws.accessKey}" secretKey="${aws.secretKey}"/>
+	</sns:config>
+	<global-property doc:name="Global Property" doc:id="0f5388c0-cc1d-4280-b04d-f004f7effa56" name="aws.accessKey" value="" />
+	<global-property doc:name="Global Property" doc:id="151f7de9-52b2-42e6-b57c-d592f7e13b8e" name="aws.secretKey" value="" />
+</domain:mule-domain>
