@@ -9,7 +9,7 @@ This is a set of starter projects using the most common enterprise components (S
 
 ## Author
 
-* **Patrick Koh** - *Initial work* - [PurpleBooth](https://github.com/patscodes)
+* **Patrick Koh** - *Initial work* - [Twitter](https://twitter.com/patscodes)
 
 
 ## License
